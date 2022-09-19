@@ -1,61 +1,49 @@
-﻿using DbAccess;
+﻿using CommandLine;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using SQLServer2SQLite.Cli.Options;
 using System;
-using System.Collections.Generic;
 
-namespace SQLServer2SQLite.Cli
+namespace SQLServer2SQLite.Cli;
+
+internal class Program
 {
-    internal class Program
+    internal static IServiceProvider ServiceProvider { get; set; }
+
+    /// <summary>
+    /// The Main.
+    /// </summary>
+    /// <param name="args">The args<see cref="string[]"/>.</param>
+    /// <returns>The <see cref="int"/>.</returns>
+    public static int Main(string[] args)
     {
-        static void Main(string[] args)
+        try
         {
-            var host = "p2zu24z7dc.database.windows.net";
-            var database = "db_ftptransport";
-            var user = "Aingeru";
-            var pass = "Medrano.2015";
+            // Configure services
+            var serviceCollection = new ServiceCollection();
+            ConfigureServices(serviceCollection);
+            ServiceProvider = serviceCollection.BuildServiceProvider();
 
-            SqlConversionHandler handler = new SqlConversionHandler(delegate (bool done,
-                bool success, int percent, string msg) {
-                    
-                });
-            SqlTableSelectionHandler selectionHandler = new SqlTableSelectionHandler(delegate (List<TableSchema> schema)
-            {
-                List<TableSchema> updated = null;
-
-                return updated;
-            });
-
-            FailedViewDefinitionHandler viewFailureHandler = new FailedViewDefinitionHandler(delegate (ViewSchema vs)
-            {
-                string updated = null;
-
-                return updated;
-            });
-
-            string sqlConnString;
-            if (false)
-            {
-                sqlConnString = GetSqlServerConnectionString(host, database);
-            }
-            else
-            {
-                sqlConnString = GetSqlServerConnectionString(host, database, user, pass);
-            }
-
-            SqlServerToSQLite.ConvertSqlServerToSQLiteDatabase(sqlConnString, "./mhctransport.db", null, null,
-                null, null, false, false);
+            // Start command line parser
+            return Parser.Default
+                .ParseArguments<ConvertOptions>(args)
+                .MapResult(
+                    (ConvertOptions opts) => opts.Convert(),
+                    errs =>
+                    {
+                        return 1;
+                    }
+                );
         }
-
-        private static string GetSqlServerConnectionString(string address, string db)
+        catch (Exception ex)
         {
-            string res = @"Data Source=" + address.Trim() +
-                    ";Initial Catalog=" + db.Trim() + ";Integrated Security=SSPI;";
-            return res;
+            Console.WriteLine(ex.ToString());
+            throw;
         }
-        private static string GetSqlServerConnectionString(string address, string db, string user, string pass)
-        {
-            string res = @"Data Source=" + address.Trim() +
-                ";Initial Catalog=" + db.Trim() + ";User ID=" + user.Trim() + ";Password=" + pass.Trim();
-            return res;
-        }
+    }
+
+    private static void ConfigureServices(IServiceCollection services)
+    {
+        services.AddLogging(configure => configure.AddConsole());
     }
 }

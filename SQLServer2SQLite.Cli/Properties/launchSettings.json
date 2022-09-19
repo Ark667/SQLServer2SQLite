@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": ""
+    },
+    "SQLServer2SQLite.Cli - 1": {
+      "commandName": "Project",
+      "commandLineArgs": "convert --sourceHost p2zu24z7dc.database.windows.net --sourceDatabase db_deltadesk --sourceUsername Aingeru --sourcePassword Medrano.2015 --targetFile C:/Users/ainge/OneDrive/Escritorio/deltadesk.db"
+    }
+  }
+}
