@@ -7,100 +7,6 @@ namespace SQLServer2SQLite.Core.Builders
     public static class TableBuilder
     {
         /// <summary>
-        /// Used when creating the CREATE TABLE DDL. Creates a single row
-        /// for the specified column.
-        /// </summary>
-        /// <param name="col">The column schema</param>
-        /// <returns>A single column line to be inserted into the general CREATE TABLE DDL statement</returns>
-        public static string BuildColumnStatement(ColumnSchema col, TableSchema ts, ref bool pkey)
-        {
-            StringBuilder sb = new StringBuilder();
-            sb.Append("\t[" + col.ColumnName + "]\t");
-
-            // Special treatment for IDENTITY columns
-            if (col.IsIdentity)
-            {
-                if (
-                    ts.PrimaryKey.Count == 1
-                    && (
-                        col.ColumnType == "tinyint"
-                        || col.ColumnType == "int"
-                        || col.ColumnType == "smallint"
-                        || col.ColumnType == "bigint"
-                        || col.ColumnType == "integer"
-                    )
-                )
-                {
-                    sb.Append("integer PRIMARY KEY AUTOINCREMENT");
-                    pkey = true;
-                }
-                else
-                    sb.Append("integer");
-            }
-            else
-            {
-                if (col.ColumnType == "int")
-                    sb.Append("integer");
-                else
-                {
-                    sb.Append(col.ColumnType);
-                }
-                if (col.Length > 0)
-                    sb.Append("(" + col.Length + ")");
-            }
-            if (!col.IsNullable)
-                sb.Append(" NOT NULL");
-
-            if (col.IsCaseSensitivite.HasValue && !col.IsCaseSensitivite.Value)
-                sb.Append(" COLLATE NOCASE");
-
-            string defval = StripParens(col.DefaultValue);
-            defval = DiscardNational(defval);
-            //_log.Debug("DEFAULT VALUE BEFORE [" + col.DefaultValue + "] AFTER [" + defval + "]");
-            if (defval != string.Empty && defval.ToUpper().Contains("GETDATE"))
-            {
-                //_log.Debug(
-                //    "converted SQL Server GETDATE() to CURRENT_TIMESTAMP for column ["
-                //        + col.ColumnName
-                //        + "]"
-                //);
-                sb.Append(" DEFAULT (CURRENT_TIMESTAMP)");
-            }
-            else if (defval != string.Empty && IsValidDefaultValue(defval))
-                sb.Append(" DEFAULT " + defval);
-
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Creates a CREATE INDEX DDL for the specified table and index schema.
-        /// </summary>
-        /// <param name="tableName">The name of the indexed table.</param>
-        /// <param name="indexSchema">The schema of the index object</param>
-        /// <returns>A CREATE INDEX DDL (SQLite format).</returns>
-        public static string BuildCreateIndex(string tableName, SchemaIndex indexSchema)
-        {
-            StringBuilder sb = new StringBuilder();
-            sb.Append("CREATE ");
-            if (indexSchema.IsUnique)
-                sb.Append("UNIQUE ");
-            sb.Append("INDEX [" + tableName + "_" + indexSchema.IndexName + "]\n");
-            sb.Append("ON [" + tableName + "]\n");
-            sb.Append("(");
-            for (int i = 0; i < indexSchema.Columns.Count; i++)
-            {
-                sb.Append("[" + indexSchema.Columns[i].ColumnName + "]");
-                if (!indexSchema.Columns[i].IsAscending)
-                    sb.Append(" DESC");
-                if (i < indexSchema.Columns.Count - 1)
-                    sb.Append(", ");
-            }
-            sb.Append(")");
-
-            return sb.ToString();
-        }
-
-        /// <summary>
         /// returns the CREATE TABLE DDL for creating the SQLite table from the specified
         /// table schema object.
         /// </summary>
@@ -176,13 +82,109 @@ namespace SQLServer2SQLite.Core.Builders
         }
 
         /// <summary>
+        /// Used when creating the CREATE TABLE DDL. Creates a single row
+        /// for the specified column.
+        /// </summary>
+        /// <param name="col">The column schema</param>
+        /// <returns>A single column line to be inserted into the general CREATE TABLE DDL statement</returns>
+        public static string BuildColumnStatement(ColumnSchema col, TableSchema ts, ref bool pkey)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("\t[" + col.ColumnName + "]\t");
+
+            // Special treatment for IDENTITY columns
+            if (col.IsIdentity)
+            {
+                if (
+                    ts.PrimaryKey.Count == 1
+                    && (
+                        col.ColumnType == "tinyint"
+                        || col.ColumnType == "int"
+                        || col.ColumnType == "smallint"
+                        || col.ColumnType == "bigint"
+                        || col.ColumnType == "integer"
+                    )
+                )
+                {
+                    sb.Append("integer PRIMARY KEY AUTOINCREMENT");
+                    pkey = true;
+                }
+                else
+                    sb.Append("integer");
+            }
+            else
+            {
+                if (col.ColumnType == "int")
+                    sb.Append("integer");
+                else
+                {
+                    sb.Append(col.ColumnType);
+                }
+                if (col.Length > 0)
+                    sb.Append("(" + col.Length + ")");
+            }
+            if (!col.IsNullable)
+                sb.Append(" NOT NULL");
+
+            if (col.IsCaseSensitivite.HasValue && !col.IsCaseSensitivite.Value)
+                sb.Append(" COLLATE NOCASE");
+
+            string defval = StripParens(col.DefaultValue);
+            defval = DiscardNational(defval);
+            //_log.Debug("DEFAULT VALUE BEFORE [" + col.DefaultValue + "] AFTER [" + defval + "]");
+            if (!string.IsNullOrEmpty(defval) && defval.ToUpper().Contains("GETDATE"))
+            {
+                //_log.Debug(
+                //    "converted SQL Server GETDATE() to CURRENT_TIMESTAMP for column ["
+                //        + col.ColumnName
+                //        + "]"
+                //);
+                sb.Append(" DEFAULT (CURRENT_TIMESTAMP)");
+            }
+            else if (!string.IsNullOrEmpty(defval) && IsValidDefaultValue(defval))
+                sb.Append(" DEFAULT " + defval);
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Creates a CREATE INDEX DDL for the specified table and index schema.
+        /// </summary>
+        /// <param name="tableName">The name of the indexed table.</param>
+        /// <param name="indexSchema">The schema of the index object</param>
+        /// <returns>A CREATE INDEX DDL (SQLite format).</returns>
+        public static string BuildCreateIndex(string tableName, SchemaIndex indexSchema)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("CREATE ");
+            if (indexSchema.IsUnique)
+                sb.Append("UNIQUE ");
+            sb.Append("INDEX [" + tableName + "_" + indexSchema.IndexName + "]\n");
+            sb.Append("ON [" + tableName + "]\n");
+            sb.Append("(");
+            for (int i = 0; i < indexSchema.Columns.Count; i++)
+            {
+                sb.Append("[" + indexSchema.Columns[i].ColumnName + "]");
+                if (!indexSchema.Columns[i].IsAscending)
+                    sb.Append(" DESC");
+                if (i < indexSchema.Columns.Count - 1)
+                    sb.Append(", ");
+            }
+            sb.Append(")");
+
+            return sb.ToString();
+        }
+
+        /// <summary>
         /// Discards the national prefix if exists (e.g., N'sometext') which is not
         /// supported in SQLite.
         /// </summary>
         /// <param name="value">The value.</param>
         /// <returns></returns>
-        private static string DiscardNational(string value)
+        public static string DiscardNational(string value)
         {
+            if (string.IsNullOrEmpty(value)) return value;
+
             Regex rx = new Regex(@"N\'([^\']*)\'");
             Match m = rx.Match(value);
             if (m.Success)
@@ -196,19 +198,29 @@ namespace SQLServer2SQLite.Core.Builders
         /// </summary>
         /// <param name="value"></param>
         /// <returns></returns>
-        private static bool IsValidDefaultValue(string value)
+        public static bool IsValidDefaultValue(string value)
         {
+            if (string.IsNullOrEmpty(value)) return false;
+
             if (IsSingleQuoted(value))
                 return true;
 
             double testnum;
             if (!double.TryParse(value, out testnum))
                 return false;
+
             return true;
         }
 
-        private static bool IsSingleQuoted(string value)
+        /// <summary>
+        /// ?
+        /// </summary>
+        /// <param name="value">?</param>
+        /// <returns>?</returns>
+        public static bool IsSingleQuoted(string value)
         {
+            if (string.IsNullOrEmpty(value)) return false;
+
             value = value.Trim();
             if (value.StartsWith("'") && value.EndsWith("'"))
                 return true;
@@ -220,8 +232,10 @@ namespace SQLServer2SQLite.Core.Builders
         /// </summary>
         /// <param name="value">The string to strip</param>
         /// <returns>The stripped string</returns>
-        private static string StripParens(string value)
+        public static string StripParens(string value)
         {
+            if (string.IsNullOrEmpty(value)) return value;
+
             Regex rx = new Regex(@"\(([^\)]*)\)");
             Match m = rx.Match(value);
             if (!m.Success)

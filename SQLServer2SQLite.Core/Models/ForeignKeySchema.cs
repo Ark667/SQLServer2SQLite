@@ -13,5 +13,10 @@ namespace SQLServer2SQLite.Core.Models
         public bool CascadeOnDelete { get; set; }
 
         public bool IsNullable { get; set; }
+
+        public override string ToString()
+        {
+            return $"{TableName};{ColumnName};{ForeignTableName};{ForeignColumnName};{CascadeOnDelete};{IsNullable};";
+        }
     }
 }

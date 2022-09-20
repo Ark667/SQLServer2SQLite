@@ -6,13 +6,13 @@ namespace SQLServer2SQLite.Core.Builders
 {
     public static class TriggerBuilder
     {
+        // TODO incorrect
         public static IList<TriggerSchema> GetForeignKeyTriggers(TableSchema dt)
         {
             IList<TriggerSchema> result = new List<TriggerSchema>();
 
             foreach (ForeignKeySchema fks in dt.ForeignKeys)
             {
-                StringBuilder sb = new StringBuilder();
                 result.Add(GenerateInsertTrigger(fks));
                 result.Add(GenerateUpdateTrigger(fks));
                 result.Add(GenerateDeleteTrigger(fks));
@@ -20,7 +20,7 @@ namespace SQLServer2SQLite.Core.Builders
             return result;
         }
 
-        private static string MakeTriggerName(ForeignKeySchema fks, string prefix)
+        public static string MakeTriggerName(ForeignKeySchema fks, string prefix)
         {
             return prefix
                 + "_"

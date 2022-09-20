@@ -7,5 +7,10 @@
         public TriggerType Type { get; set; }
         public string Body { get; set; }
         public string Table { get; set; }
+
+        public override string ToString()
+        {
+            return $"{Name};{Event};{Type};{Body};{Table};";
+        }
     }
 }

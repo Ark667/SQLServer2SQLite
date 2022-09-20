@@ -15,4 +15,8 @@
     <ProjectReference Include="..\SQLServer2SQLite.Core\SQLServer2SQLite.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
 </Project>
