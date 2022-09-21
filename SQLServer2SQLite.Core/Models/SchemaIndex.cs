@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace SQLServer2SQLite.Core.Models
+namespace SqlServer2SqLite.Core.Models
 {
     public class SchemaIndex
     {

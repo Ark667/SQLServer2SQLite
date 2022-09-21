@@ -1,4 +1,6 @@
-﻿namespace SQLServer2SQLite.Core.Helpers
+﻿using Microsoft.Data.Sqlite;
+
+namespace SqlServer2SqLite.Core.Helpers
 {
     public static class ConnectionStringHelper
     {
@@ -44,6 +46,19 @@
                 + user.Trim()
                 + ";Password="
                 + pass.Trim();
+        }
+
+        public static string CreateSQLiteConnectionString(string sqlitePath, string password)
+        {
+            SqliteConnectionStringBuilder builder = new SqliteConnectionStringBuilder();
+            builder.DataSource = sqlitePath;
+            if (password != null)
+                builder.Password = password;
+            //builder.PageSize = 4096;
+            //builder.UseUTF16Encoding = true;
+            string connstring = builder.ConnectionString;
+
+            return connstring;
         }
     }
 }

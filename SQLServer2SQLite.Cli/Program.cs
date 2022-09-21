@@ -1,10 +1,10 @@
 ﻿using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using SQLServer2SQLite.Cli.Options;
+using SqlServer2SqLite.Cli.Options;
 using System;
 
-namespace SQLServer2SQLite.Cli;
+namespace SqlServer2SqLite.Cli;
 
 internal class Program
 {

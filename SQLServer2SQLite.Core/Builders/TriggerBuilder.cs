@@ -1,8 +1,7 @@
 ﻿using System.Collections.Generic;
-using System.Text;
-using SQLServer2SQLite.Core.Models;
+using SqlServer2SqLite.Core.Models;
 
-namespace SQLServer2SQLite.Core.Builders
+namespace SqlServer2SqLite.Core.Builders
 {
     public static class TriggerBuilder
     {

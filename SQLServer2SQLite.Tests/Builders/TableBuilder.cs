@@ -1,8 +1,6 @@
-using SQLServer2SQLite.Core.Models;
-using System.Text.RegularExpressions;
-using System.Text;
+using SqlServer2SqLite.Core.Models;
 
-namespace SQLServer2SQLite.Tests;
+namespace SqlServer2SqLite.Tests.Builders;
 
 public class TableBuilder
 {
@@ -157,10 +155,7 @@ public class TableBuilder
             Core.Builders.TableBuilder.DiscardNational("N'sometext"),
             Is.EqualTo("N'sometext")
         );
-        Assert.That(
-            Core.Builders.TableBuilder.DiscardNational(null),
-            Is.EqualTo(null)
-        );
+        Assert.That(Core.Builders.TableBuilder.DiscardNational(null), Is.EqualTo(null));
     }
 
     [Test]

@@ -1,8 +1,8 @@
-﻿using SQLServer2SQLite.Core.Models;
+﻿using SqlServer2SqLite.Core.Models;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace SQLServer2SQLite.Core.Builders
+namespace SqlServer2SqLite.Core.Builders
 {
     public static class TableBuilder
     {
@@ -183,7 +183,8 @@ namespace SQLServer2SQLite.Core.Builders
         /// <returns></returns>
         public static string DiscardNational(string value)
         {
-            if (string.IsNullOrEmpty(value)) return value;
+            if (string.IsNullOrEmpty(value))
+                return value;
 
             Regex rx = new Regex(@"N\'([^\']*)\'");
             Match m = rx.Match(value);
@@ -200,7 +201,8 @@ namespace SQLServer2SQLite.Core.Builders
         /// <returns></returns>
         public static bool IsValidDefaultValue(string value)
         {
-            if (string.IsNullOrEmpty(value)) return false;
+            if (string.IsNullOrEmpty(value))
+                return false;
 
             if (IsSingleQuoted(value))
                 return true;
@@ -219,7 +221,8 @@ namespace SQLServer2SQLite.Core.Builders
         /// <returns>?</returns>
         public static bool IsSingleQuoted(string value)
         {
-            if (string.IsNullOrEmpty(value)) return false;
+            if (string.IsNullOrEmpty(value))
+                return false;
 
             value = value.Trim();
             if (value.StartsWith("'") && value.EndsWith("'"))
@@ -234,7 +237,8 @@ namespace SQLServer2SQLite.Core.Builders
         /// <returns>The stripped string</returns>
         public static string StripParens(string value)
         {
-            if (string.IsNullOrEmpty(value)) return value;
+            if (string.IsNullOrEmpty(value))
+                return value;
 
             Regex rx = new Regex(@"\(([^\)]*)\)");
             Match m = rx.Match(value);

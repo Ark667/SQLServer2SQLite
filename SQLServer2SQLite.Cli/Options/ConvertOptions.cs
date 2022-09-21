@@ -1,10 +1,11 @@
 ﻿using CommandLine;
-using SQLServer2SQLite.Core.Helpers;
-using SQLServer2SQLite.Core;
+using SqlServer2SqLite.Core.Helpers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using SqlServer2SqLite.Core;
+using SqlServer2SqLite.Core.Services;
 
-namespace SQLServer2SQLite.Cli.Options;
+namespace SqlServer2SqLite.Cli.Options;
 
 /// <summary>
 /// Defines the <see cref="ConvertOptions" />.
@@ -72,8 +73,12 @@ public class ConvertOptions
     public int Convert()
     {
         new SqlServerToSQLite(
-            Program.ServiceProvider.GetRequiredService<ILogger<SqlServerToSQLite>>()
-        ).ConvertSqlServerDatabaseToSQLiteFile(
+            Program.ServiceProvider.GetRequiredService<ILogger<SqlServerToSQLite>>(),
+            new SqlServerService(
+                Program.ServiceProvider.GetRequiredService<ILogger<SqlServerService>>()
+            ),
+            new SqLiteService(Program.ServiceProvider.GetRequiredService<ILogger<SqLiteService>>())
+        ).Convert(
             ConnectionStringHelper.GetSqlServerConnectionString1(
                 SourceHost,
                 SourceDatabase,
