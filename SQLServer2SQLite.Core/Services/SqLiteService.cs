@@ -1,80 +1,62 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.Data.Sqlite;
-using Microsoft.Data.SqlClient;
 using SqlServer2SqLite.Core.Models;
 using Microsoft.Extensions.Logging;
 using SqlServer2SqLite.Core.Builders;
 using System.Data;
-using System.Text;
-using System.IO;
 using System.Linq;
 using SQLServer2SQLite.Core.Builders;
 using SQLServer2SQLite.Core.Helpers;
-using SqlServer2SqLite.Core.Helpers;
 
 namespace SqlServer2SqLite.Core.Services
 {
     public class SqLiteService
     {
-        private static ILogger<SqLiteService> Logger { get; set; }
+        private ILogger<SqLiteService> Logger { get; set; }
 
-        public SqLiteService(ILogger<SqLiteService> logger)
+        public SqLiteService(ILogger<SqLiteService> logger, string connectionString)
         {
             Logger = logger;
+            ConnectionString = connectionString;
         }
+
+        public string ConnectionString { get; set; }
 
         /// <summary>
         /// Creates the SQLite database from the schema read from the SQL Server.
         /// </summary>
         /// <param name="sqlitePath">The path to the generated DB file.</param>
-        /// <param name="schema">The schema of the SQL server database.</param>
+        /// <param name="databaseSchema">The schema of the SQL server database.</param>
         /// <param name="password">The password to use for encrypting the DB or null if non is needed.</param>
-        public void CreateSqLiteDatabase(
-            string sqlitePath,
-            DatabaseSchema schema,
-            string password = null
-        )
+        public void CreateSqLiteDatabase(DatabaseSchema databaseSchema)
         {
-            // Delete the target file if it exists already.
-            if (File.Exists(sqlitePath))
-                File.Delete(sqlitePath);
-
-            // Connect to the newly created database
-            string sqliteConnString = ConnectionStringHelper.CreateSQLiteConnectionString(
-                sqlitePath,
-                password
-            );
-            using (SqliteConnection conn = new SqliteConnection(sqliteConnString))
+            using (var connection = new SqliteConnection(ConnectionString))
             {
-                conn.Open();
+                connection.Open();
+                Logger.LogInformation($"Connected with {ConnectionString}");
 
-                // Create all tables in the new database
-                foreach (TableSchema dt in schema.Tables)
+                foreach (TableSchema tableSchema in databaseSchema.Tables)
                 {
-                    try
-                    {
-                        // Prepare a CREATE TABLE DDL statement
-                        string stmt = TableBuilder.BuildCreateTableQuery(dt);
+                    // Prepare a CREATE TABLE DDL statement
+                    string query = TableBuilder.BuildCreateTableQuery(tableSchema);
+                    Logger.LogInformation(query);
 
-                        Logger.LogInformation(stmt);
-
-                        // Execute the query in order to actually create the table.
-                        var cmd = new SqliteCommand(stmt, conn);
-                        cmd.ExecuteNonQuery();
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogError("AddSQLiteTable failed", ex);
-                        throw;
-                    }
-
-                    Logger.LogInformation("added schema for SQLite table [" + dt.TableName + "]");
+                    // Execute the query in order to actually create the table.
+                    var command = new SqliteCommand(query, connection);
+                    command.ExecuteNonQuery();
+                    Logger.LogInformation(
+                        "added schema for SQLite table [" + tableSchema.TableName + "]"
+                    );
                 }
 
                 // Add triggers based on foreign key constraints
-                AddTriggersForForeignKeys(sqlitePath, schema.Tables, password);
-                Logger.LogInformation($"Source rows copied on target database");
+                CreateSqLiteTriggers(databaseSchema.Tables.ToArray());
+                Logger.LogInformation($"Triggers created on target database");
+
+                // Add triggers based on foreign key constraints
+                // TODO AddSQLiteView(connectionString, databaseSchema.Views.ToArray());
+                Logger.LogInformation($"Views created on target database");
             }
 
             Logger.LogInformation("finished adding all table/view schemas for SQLite database");
@@ -89,27 +71,20 @@ namespace SqlServer2SqLite.Core.Services
         /// <param name="password">The password to use for encrypting the file</param>
         public void CopySqlServerRowsToSqLiteDatabase(
             DataTable[] dataTables,
-            string sqlitePath,
-            List<TableSchema> tableSchemas,
-            string password
+            TableSchema[] tableSchemas
         )
         {
-            // Connect to the SQLite database
-            using (
-                var sqlConnection = new SqliteConnection(
-                    ConnectionStringHelper.CreateSQLiteConnectionString(sqlitePath, password)
-                )
-            )
+            using (var connection = new SqliteConnection(ConnectionString))
             {
-                sqlConnection.Open();
-                SetConstraintCheck(sqlConnection, false);
+                connection.Open();
+                Logger.LogInformation($"Connected with {ConnectionString}");
 
                 // Go over all tables in the schema and copy their rows
                 foreach (var tableSchema in tableSchemas)
                 {
                     var inserted = 0;
                     var query = InsertBuilder.BuildSQLiteInsert(tableSchema);
-                    query.Connection = sqlConnection;
+                    query.Connection = connection;
 
                     var rows = dataTables
                         .First(o => o.TableName == tableSchema.TableName)
@@ -124,11 +99,9 @@ namespace SqlServer2SqLite.Core.Services
                             {
                                 var pname =
                                     $"@{TextHelper.GetNormalizedName(column.ColumnName, pnames)}";
-                                query.Parameters[pname].Value = CastValueForColumn(
-                                    row[column.ColumnName],
-                                    column
-                                );
-                                pnames.Add(pname);
+                                var value = CastValueForColumn(row[column.ColumnName], column);
+                                query.Parameters[pname].Value = value;
+                                query.Parameters[pname].Size = value.ToString().Length;
                             }
                             query.ExecuteNonQuery();
                             inserted += 1;
@@ -142,7 +115,6 @@ namespace SqlServer2SqLite.Core.Services
                         );
                     }
 
-                    SetConstraintCheck(sqlConnection, true);
                     Logger.LogInformation(
                         $"Inserted {inserted} rows for table [{tableSchema.TableName}]"
                     );
@@ -150,31 +122,24 @@ namespace SqlServer2SqLite.Core.Services
             }
         }
 
-        public void AddTriggersForForeignKeys(
-            string sqlitePath,
-            IEnumerable<TableSchema> schema,
-            string password
-        )
+        private void CreateSqLiteTriggers(TableSchema[] tableSchemas)
         {
             // Connect to the newly created database
-            string sqliteConnString = ConnectionStringHelper.CreateSQLiteConnectionString(
-                sqlitePath,
-                password
-            );
-            using (SqliteConnection conn = new SqliteConnection(sqliteConnString))
+            using (var connection = new SqliteConnection(ConnectionString))
             {
-                conn.Open();
+                connection.Open();
 
-                foreach (TableSchema dt in schema)
+                foreach (TableSchema tableSchema in tableSchemas)
                 {
-                    try
+                    var triggers = TriggerBuilder.GetForeignKeyTriggers(tableSchema);
+                    foreach (TriggerSchema trigger in triggers)
                     {
-                        AddTableTriggers(conn, dt);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogError("AddTableTriggers failed", ex);
-                        throw;
+                        // Prepare a TRIGGER VIEW DDL statement
+                        string query = trigger.ToString();
+                        Logger.LogInformation("\n\n" + query + "\n\n");
+
+                        SqliteCommand cmd = new SqliteCommand(query, connection);
+                        cmd.ExecuteNonQuery();
                     }
                 }
             }
@@ -182,46 +147,36 @@ namespace SqlServer2SqLite.Core.Services
             Logger.LogInformation("finished adding triggers to schema");
         }
 
-        private static void AddSQLiteView(SqliteConnection conn, ViewSchema vs)
+        private void CreateSqLiteViews(ViewSchema[] viewSchemas)
         {
-            // Prepare a CREATE VIEW DDL statement
-            string stmt = vs.ViewSQL;
-            Logger.LogInformation("\n\n" + stmt + "\n\n");
-
-            // Execute the query in order to actually create the view.
-            SqliteTransaction tx = conn.BeginTransaction();
-            try
+            using (var connection = new SqliteConnection(ConnectionString))
             {
-                SqliteCommand cmd = new SqliteCommand(stmt, conn, tx);
-                cmd.ExecuteNonQuery();
+                connection.Open();
 
-                tx.Commit();
-            }
-            catch (SqliteException)
-            {
-                tx.Rollback();
-            }
-        }
+                foreach (var viewSchema in viewSchemas)
+                {
+                    // Prepare a CREATE VIEW DDL statement
+                    string stmt = viewSchema.ViewSQL;
+                    Logger.LogInformation("\n\n" + stmt + "\n\n");
 
-        private static void AddTableTriggers(SqliteConnection conn, TableSchema dt)
-        {
-            IList<TriggerSchema> triggers = TriggerBuilder.GetForeignKeyTriggers(dt);
-            foreach (TriggerSchema trigger in triggers)
-            {
-                SqliteCommand cmd = new SqliteCommand(WriteTriggerSchema(trigger), conn);
-                cmd.ExecuteNonQuery();
+                    // Execute the query in order to actually create the view.
+                    SqliteCommand cmd = new SqliteCommand(stmt, connection);
+                    cmd.ExecuteNonQuery();
+                }
             }
+
+            Logger.LogInformation("finished adding views to schema");
         }
 
         /// <summary>
         /// Used in order to adjust the value received from SQL Servr for the SQLite database.
         /// </summary>
-        /// <param name="val">The value object</param>
+        /// <param name="value">The value object</param>
         /// <param name="columnSchema">The corresponding column schema</param>
         /// <returns>SQLite adjusted value.</returns>
-        private static object CastValueForColumn(object val, ColumnSchema columnSchema)
+        private static object CastValueForColumn(object value, ColumnSchema columnSchema)
         {
-            if (val is DBNull)
+            if (value is DBNull)
                 return DBNull.Value;
 
             DbType dt = GetDbTypeOfColumn(columnSchema);
@@ -229,64 +184,64 @@ namespace SqlServer2SqLite.Core.Services
             switch (dt)
             {
                 case DbType.Int32:
-                    if (val is short)
-                        return (int)(short)val;
-                    if (val is byte)
-                        return (int)(byte)val;
-                    if (val is long)
-                        return (int)(long)val;
-                    if (val is decimal)
-                        return (int)(decimal)val;
+                    if (value is short)
+                        return (int)(short)value;
+                    if (value is byte)
+                        return (int)(byte)value;
+                    if (value is long)
+                        return (int)(long)value;
+                    if (value is decimal)
+                        return (int)(decimal)value;
                     break;
 
                 case DbType.Int16:
-                    if (val is int)
-                        return (short)(int)val;
-                    if (val is byte)
-                        return (short)(byte)val;
-                    if (val is long)
-                        return (short)(long)val;
-                    if (val is decimal)
-                        return (short)(decimal)val;
+                    if (value is int)
+                        return (short)(int)value;
+                    if (value is byte)
+                        return (short)(byte)value;
+                    if (value is long)
+                        return (short)(long)value;
+                    if (value is decimal)
+                        return (short)(decimal)value;
                     break;
 
                 case DbType.Int64:
-                    if (val is int)
-                        return (long)(int)val;
-                    if (val is short)
-                        return (long)(short)val;
-                    if (val is byte)
-                        return (long)(byte)val;
-                    if (val is decimal)
-                        return (long)(decimal)val;
+                    if (value is int)
+                        return (long)(int)value;
+                    if (value is short)
+                        return (long)(short)value;
+                    if (value is byte)
+                        return (long)(byte)value;
+                    if (value is decimal)
+                        return (long)(decimal)value;
                     break;
 
                 case DbType.Single:
-                    if (val is double)
-                        return (float)(double)val;
-                    if (val is decimal)
-                        return (float)(decimal)val;
+                    if (value is double)
+                        return (float)(double)value;
+                    if (value is decimal)
+                        return (float)(decimal)value;
                     break;
 
                 case DbType.Double:
-                    if (val is float)
-                        return (double)(float)val;
-                    if (val is double)
-                        return (double)val;
-                    if (val is decimal)
-                        return (double)(decimal)val;
+                    if (value is float)
+                        return (double)(float)value;
+                    if (value is double)
+                        return (double)value;
+                    if (value is decimal)
+                        return (double)(decimal)value;
                     break;
 
                 case DbType.String:
-                    if (val is Guid)
-                        return ((Guid)val).ToString();
+                    if (value is Guid)
+                        return ((Guid)value).ToString();
                     break;
 
                 case DbType.Guid:
-                    if (val is string)
-                        return TextHelper.ParseStringAsGuid((string)val);
-                    if (val is byte[])
-                        return TextHelper.ParseBlobAsGuid((byte[])val);
+                    if (value is string)
+                        return TextHelper.ParseStringAsGuid((string)value);
+                    if (value is byte[])
+                        return TextHelper.ParseBlobAsGuid((byte[])value);
                     break;
 
                 case DbType.Binary:
@@ -300,92 +255,64 @@ namespace SqlServer2SqLite.Core.Services
                     );
             }
 
-            return val;
+            return value;
         }
 
         /// <summary>
         /// Matches SQL Server types to general DB types
         /// </summary>
-        /// <param name="cs">The column schema to use for the match</param>
+        /// <param name="columnSchema">The column schema to use for the match</param>
         /// <returns>The matched DB type</returns>
-        private static DbType GetDbTypeOfColumn(ColumnSchema cs)
+        private static DbType GetDbTypeOfColumn(ColumnSchema columnSchema)
         {
-            if (cs.ColumnType == "tinyint")
+            if (columnSchema.ColumnType == "tinyint")
                 return DbType.Byte;
-            if (cs.ColumnType == "int")
+            if (columnSchema.ColumnType == "int")
                 return DbType.Int32;
-            if (cs.ColumnType == "smallint")
+            if (columnSchema.ColumnType == "smallint")
                 return DbType.Int16;
-            if (cs.ColumnType == "bigint")
+            if (columnSchema.ColumnType == "bigint")
                 return DbType.Int64;
-            if (cs.ColumnType == "bit")
+            if (columnSchema.ColumnType == "bit")
                 return DbType.Boolean;
             if (
-                cs.ColumnType == "nvarchar"
-                || cs.ColumnType == "varchar"
-                || cs.ColumnType == "text"
-                || cs.ColumnType == "ntext"
+                columnSchema.ColumnType == "nvarchar"
+                || columnSchema.ColumnType == "varchar"
+                || columnSchema.ColumnType == "text"
+                || columnSchema.ColumnType == "ntext"
             )
                 return DbType.String;
-            if (cs.ColumnType == "float")
+            if (columnSchema.ColumnType == "float")
                 return DbType.Double;
-            if (cs.ColumnType == "real")
+            if (columnSchema.ColumnType == "real")
                 return DbType.Single;
-            if (cs.ColumnType == "blob")
+            if (columnSchema.ColumnType == "blob")
                 return DbType.Binary;
-            if (cs.ColumnType == "numeric")
+            if (columnSchema.ColumnType == "numeric")
                 return DbType.Double;
             if (
-                cs.ColumnType == "timestamp"
-                || cs.ColumnType == "datetime"
-                || cs.ColumnType == "datetime2"
-                || cs.ColumnType == "date"
-                || cs.ColumnType == "time"
-                || cs.ColumnType == "datetimeoffset"
+                columnSchema.ColumnType == "timestamp"
+                || columnSchema.ColumnType == "datetime"
+                || columnSchema.ColumnType == "datetime2"
+                || columnSchema.ColumnType == "date"
+                || columnSchema.ColumnType == "time"
+                || columnSchema.ColumnType == "datetimeoffset"
             )
                 return DbType.DateTime;
-            if (cs.ColumnType == "nchar" || cs.ColumnType == "char")
+            if (columnSchema.ColumnType == "nchar" || columnSchema.ColumnType == "char")
                 return DbType.String;
-            if (cs.ColumnType == "uniqueidentifier" || cs.ColumnType == "guid")
+            if (columnSchema.ColumnType == "uniqueidentifier" || columnSchema.ColumnType == "guid")
                 return DbType.Guid;
-            if (cs.ColumnType == "xml")
+            if (columnSchema.ColumnType == "xml")
                 return DbType.String;
-            if (cs.ColumnType == "sql_variant")
+            if (columnSchema.ColumnType == "sql_variant")
                 return DbType.Object;
-            if (cs.ColumnType == "integer")
+            if (columnSchema.ColumnType == "integer")
                 return DbType.Int64;
 
-            Logger.LogError("illegal db type found");
-            throw new ApplicationException("Illegal DB type found (" + cs.ColumnType + ")");
-        }
-
-        /// <summary>
-        /// Gets a create script for the triggerSchema in sqlite syntax
-        /// </summary>
-        /// <param name="ts">Trigger to script</param>
-        /// <returns>Executable script</returns>
-        private static string WriteTriggerSchema(TriggerSchema ts)
-        {
-            return @"CREATE TRIGGER ["
-                + ts.Name
-                + "] "
-                + ts.Type
-                + " "
-                + ts.Event
-                + " ON ["
-                + ts.Table
-                + "] "
-                + "BEGIN "
-                + ts.Body
-                + " END;";
-        }
-
-        // TODO test!
-        public static void SetConstraintCheck(SqliteConnection sqliteConnection, bool enabled)
-        {
-            var command = sqliteConnection.CreateCommand();
-            command.CommandText = $"PRAGMA ignore_check_constraints = {(enabled ? 0 : 1)};";
-            command.ExecuteNonQuery();
+            throw new InvalidOperationException(
+                "Illegal DB type found (" + columnSchema.ColumnType + ")"
+            );
         }
     }
 }

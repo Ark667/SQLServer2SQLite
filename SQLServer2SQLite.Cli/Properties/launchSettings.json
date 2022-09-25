@@ -1,8 +1,12 @@
 {
   "profiles": {
-    "SQLServer2SQLite.Cli": {
+    "SQLServer2SQLite.Cli - Create": {
       "commandName": "Project",
-      "commandLineArgs": "convert --sourceHost p2zu24z7dc.database.windows.net --sourceDatabase db_deltadesk --sourceUsername Aingeru --sourcePassword Medrano.2015 --targetFile C:/Users/ainge/OneDrive/Escritorio/deltadesk.db"
+      "commandLineArgs": "create --sourceHost p2zu24z7dc.database.windows.net --sourceDatabase db_deltadesk --sourceUsername Aingeru --sourcePassword Medrano.2015 --targetFile C:/Users/ainge/OneDrive/Escritorio/deltadesk.db"
+    },
+    "SQLServer2SQLite.Cli - Copy": {
+      "commandName": "Project",
+      "commandLineArgs": "copy --sourceHost p2zu24z7dc.database.windows.net --sourceDatabase db_deltadesk --sourceUsername Aingeru --sourcePassword Medrano.2015 --targetFile C:/Users/ainge/OneDrive/Escritorio/deltadesk.db"
     }
   }
 }

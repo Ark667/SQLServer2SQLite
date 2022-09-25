@@ -5,7 +5,6 @@ using Microsoft.Data.SqlClient;
 using SqlServer2SqLite.Core.Models;
 using Microsoft.Extensions.Logging;
 using System.Text;
-using Microsoft.Data.Sqlite;
 using System.Data;
 
 namespace SqlServer2SqLite.Core.Services
@@ -15,11 +14,13 @@ namespace SqlServer2SqLite.Core.Services
         private static Regex _keyRx = new Regex(@"(([a-zA-Z_äöüÄÖÜß0-9\.]|(\s+))+)(\(\-\))?");
         private static Regex _defaultValueRx = new Regex(@"\(N(\'.*\')\)");
 
-        private static ILogger<SqlServerService> Logger { get; set; }
+        private ILogger<SqlServerService> Logger { get; }
+        public string ConnectionString { get; }
 
-        public SqlServerService(ILogger<SqlServerService> logger)
+        public SqlServerService(ILogger<SqlServerService> logger, string connectionString)
         {
             Logger = logger;
+            ConnectionString = connectionString;
         }
 
         /// <summary>
@@ -27,17 +28,17 @@ namespace SqlServer2SqLite.Core.Services
         /// </summary>
         /// <param name="connectionString">The connection string used for reading SQL Server schema.</param>
         /// <returns>database schema objects for every table/view in the SQL Server database.</returns>
-        public DatabaseSchema GetDatabaseSchema(string connectionString)
+        public DatabaseSchema GetDatabaseSchema()
         {
             // First step is to read the names of all tables in the database
             List<TableSchema> tables = new List<TableSchema>();
-            using (SqlConnection conn = new SqlConnection(connectionString))
+            using (SqlConnection conn = new SqlConnection(ConnectionString))
             {
                 conn.Open();
-                Logger.LogInformation($"Connected with {connectionString}");
+                Logger.LogInformation($"Connected with {ConnectionString}");
 
-                List<string> tableNames = new List<string>();
-                List<string> tblschema = new List<string>();
+                var tableNames = new List<string>();
+                var tblschema = new List<string>();
 
                 // This command will read the names of all tables in the database
                 SqlCommand cmd = new SqlCommand(
@@ -78,12 +79,12 @@ namespace SqlServer2SqLite.Core.Services
 
             // Continue and read all of the views in the database
             List<ViewSchema> views = new List<ViewSchema>();
-            using (SqlConnection conn = new SqlConnection(connectionString))
+            using (SqlConnection conn = new SqlConnection(ConnectionString))
             {
                 conn.Open();
 
                 SqlCommand cmd = new SqlCommand(
-                    @"SELECT TABLE_NAME, VIEW_DEFINITION  from INFORMATION_SCHEMA.VIEWS",
+                    @"select TABLE_NAME, VIEW_DEFINITION from INFORMATION_SCHEMA.VIEWS",
                     conn
                 );
                 using (SqlDataReader reader = cmd.ExecuteReader())
@@ -112,10 +113,7 @@ namespace SqlServer2SqLite.Core.Services
                 }
             }
 
-            DatabaseSchema ds = new DatabaseSchema();
-            ds.Tables = tables;
-            ds.Views = views;
-            return ds;
+            return new DatabaseSchema { Tables = tables, Views = views };
         }
 
         /// <summary>
@@ -275,34 +273,27 @@ namespace SqlServer2SqLite.Core.Services
                 }
             }
 
-            try
+            // Find index information
+            SqlCommand cmd3 = new SqlCommand(
+                @"exec sp_helpindex '" + tschma + "." + tableName + "'",
+                connection
+            );
+            using (SqlDataReader reader = cmd3.ExecuteReader())
             {
-                // Find index information
-                SqlCommand cmd3 = new SqlCommand(
-                    @"exec sp_helpindex '" + tschma + "." + tableName + "'",
-                    connection
-                );
-                using (SqlDataReader reader = cmd3.ExecuteReader())
+                res.Indexes = new List<SchemaIndex>();
+                while (reader.Read())
                 {
-                    res.Indexes = new List<SchemaIndex>();
-                    while (reader.Read())
-                    {
-                        string indexName = (string)reader["index_name"];
-                        string desc = (string)reader["index_description"];
-                        string keys = (string)reader["index_keys"];
+                    string indexName = (string)reader["index_name"];
+                    string desc = (string)reader["index_description"];
+                    string keys = (string)reader["index_keys"];
 
-                        // Don't add the index if it is actually a primary key index
-                        if (desc.Contains("primary key"))
-                            continue;
+                    // Don't add the index if it is actually a primary key index
+                    if (desc.Contains("primary key"))
+                        continue;
 
-                        SchemaIndex index = BuildIndexSchema(indexName, desc, keys);
-                        res.Indexes.Add(index);
-                    }
+                    SchemaIndex index = BuildIndexSchema(indexName, desc, keys);
+                    res.Indexes.Add(index);
                 }
-            }
-            catch (Exception)
-            {
-                Logger.LogWarning("failed to read index information for table [" + tableName + "]");
             }
 
             return res;
@@ -498,30 +489,30 @@ namespace SqlServer2SqLite.Core.Services
         /// <summary>
         /// More adjustments for the DEFAULT value clause.
         /// </summary>
-        /// <param name="val">The value to adjust</param>
+        /// <param name="value">The value to adjust</param>
         /// <returns>Adjusted DEFAULT value string</returns>
-        private static string AdjustDefaultValue(string val)
+        private static string AdjustDefaultValue(string value)
         {
-            if (val == null || val == string.Empty)
-                return val;
+            if (value == null || value == string.Empty)
+                return value;
 
-            Match m = _defaultValueRx.Match(val);
+            Match m = _defaultValueRx.Match(value);
             if (m.Success)
                 return m.Groups[1].Value;
-            return val;
+            return value;
         }
 
         /// <summary>
         /// Copies table rows from the SQL Server database to the SQLite database.
         /// </summary>
-        /// <param name="sqlConnString">The SQL Server connection string</param>
         /// <param name="tableSchemas">The schema of the SQL Server database.</param>
-        public DataTable[] GetDatabaseRows(string sqlConnString, List<TableSchema> tableSchemas)
+        ///
+        public DataTable[] GetDatabaseRows(TableSchema[] tableSchemas)
         {
             var dataTables = new List<DataTable>();
 
             // Connect to the SQL Server database
-            using (var sqlConnection = new SqlConnection(sqlConnString))
+            using (var sqlConnection = new SqlConnection(ConnectionString))
             {
                 sqlConnection.Open();
 
@@ -546,17 +537,17 @@ namespace SqlServer2SqLite.Core.Services
             return dataTables.ToArray();
         }
 
-        private static string BuildSqlServerTableQuery(TableSchema ts)
+        private static string BuildSqlServerTableQuery(TableSchema tableSchema)
         {
             var sb = new StringBuilder();
             sb.Append("SELECT ");
-            for (int i = 0; i < ts.Columns.Count; i++)
+            for (int i = 0; i < tableSchema.Columns.Count; i++)
             {
-                sb.Append("[" + ts.Columns[i].ColumnName + "]");
-                if (i < ts.Columns.Count - 1)
+                sb.Append("[" + tableSchema.Columns[i].ColumnName + "]");
+                if (i < tableSchema.Columns.Count - 1)
                     sb.Append(", ");
             }
-            sb.Append(" FROM " + ts.TableSchemaName + "." + "[" + ts.TableName + "]");
+            sb.Append($" FROM {tableSchema.TableSchemaName}.[{tableSchema.TableName}]");
             return sb.ToString();
         }
     }

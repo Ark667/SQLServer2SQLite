@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using SqlServer2SqLite.Core.Models;
 
 namespace SqlServer2SqLite.Core.Builders
@@ -6,9 +7,9 @@ namespace SqlServer2SqLite.Core.Builders
     public static class TriggerBuilder
     {
         // TODO incorrect
-        public static IList<TriggerSchema> GetForeignKeyTriggers(TableSchema dt)
+        public static TriggerSchema[] GetForeignKeyTriggers(TableSchema dt)
         {
-            IList<TriggerSchema> result = new List<TriggerSchema>();
+            var result = new List<TriggerSchema>();
 
             foreach (ForeignKeySchema fks in dt.ForeignKeys)
             {
@@ -16,7 +17,7 @@ namespace SqlServer2SqLite.Core.Builders
                 result.Add(GenerateUpdateTrigger(fks));
                 result.Add(GenerateDeleteTrigger(fks));
             }
-            return result;
+            return result.ToArray();
         }
 
         public static string MakeTriggerName(ForeignKeySchema fks, string prefix)

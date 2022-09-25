@@ -10,7 +10,18 @@
 
         public override string ToString()
         {
-            return $"{Name};{Event};{Type};{Body};{Table};";
+            return @"CREATE TRIGGER ["
+                + Name
+                + "] "
+                + Type
+                + " "
+                + Event
+                + " ON ["
+                + Table
+                + "] "
+                + "BEGIN "
+                + Body
+                + " END;";
         }
     }
 }

@@ -26,9 +26,10 @@ internal class Program
 
             // Start command line parser
             return Parser.Default
-                .ParseArguments<ConvertOptions>(args)
+                .ParseArguments<CreateOption, CopyOption>(args)
                 .MapResult(
-                    (ConvertOptions opts) => opts.Convert(),
+                    (CreateOption opts) => opts.Create(),
+                    (CopyOption opts) => opts.Copy(),
                     errs =>
                     {
                         return 1;

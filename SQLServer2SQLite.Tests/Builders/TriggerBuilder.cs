@@ -113,7 +113,7 @@ public class TriggerBuilder
         Assert.That(
             Core.Builders.TriggerBuilder.GenerateInsertTrigger(GetForeignKeySchema()).ToString(),
             Is.EqualTo(
-                "fki_TableName2_ColumnName2_ForeignTableName1_ForeignColumnName1;Insert;Before;SELECT RAISE(ROLLBACK, 'insert on table TableName2 violates foreign key constraint fki_TableName2_ColumnName2_ForeignTableName1_ForeignColumnName1') WHERE NEW.ColumnName2 IS NOT NULL AND (SELECT ForeignColumnName1 FROM ForeignTableName1 WHERE ForeignColumnName1 = NEW.ColumnName2) IS NULL; ;TableName2;"
+                "CREATE TRIGGER [fki_TableName2_ColumnName2_ForeignTableName1_ForeignColumnName1] Before Insert ON [TableName2] BEGIN SELECT RAISE(ROLLBACK, 'insert on table TableName2 violates foreign key constraint fki_TableName2_ColumnName2_ForeignTableName1_ForeignColumnName1') WHERE NEW.ColumnName2 IS NOT NULL AND (SELECT ForeignColumnName1 FROM ForeignTableName1 WHERE ForeignColumnName1 = NEW.ColumnName2) IS NULL;  END;"
             )
         );
     }
@@ -124,7 +124,7 @@ public class TriggerBuilder
         Assert.That(
             Core.Builders.TriggerBuilder.GenerateUpdateTrigger(GetForeignKeySchema()).ToString(),
             Is.EqualTo(
-                "fku_TableName2_ColumnName2_ForeignTableName1_ForeignColumnName1;Update;Before;SELECT RAISE(ROLLBACK, 'update on table TableName2 violates foreign key constraint fku_TableName2_ColumnName2_ForeignTableName1_ForeignColumnName1') WHERE NEW.ColumnName2 IS NOT NULL AND (SELECT ForeignColumnName1 FROM ForeignTableName1 WHERE ForeignColumnName1 = NEW.ColumnName2) IS NULL; ;TableName2;"
+                "CREATE TRIGGER [fku_TableName2_ColumnName2_ForeignTableName1_ForeignColumnName1] Before Update ON [TableName2] BEGIN SELECT RAISE(ROLLBACK, 'update on table TableName2 violates foreign key constraint fku_TableName2_ColumnName2_ForeignTableName1_ForeignColumnName1') WHERE NEW.ColumnName2 IS NOT NULL AND (SELECT ForeignColumnName1 FROM ForeignTableName1 WHERE ForeignColumnName1 = NEW.ColumnName2) IS NULL;  END;"
             )
         );
     }
@@ -135,7 +135,7 @@ public class TriggerBuilder
         Assert.That(
             Core.Builders.TriggerBuilder.GenerateDeleteTrigger(GetForeignKeySchema()).ToString(),
             Is.EqualTo(
-                "fkd_TableName2_ColumnName2_ForeignTableName1_ForeignColumnName1;Delete;Before;DELETE FROM [TableName2] WHERE ColumnName2 = OLD.ForeignColumnName1; ;ForeignTableName1;"
+                "CREATE TRIGGER [fkd_TableName2_ColumnName2_ForeignTableName1_ForeignColumnName1] Before Delete ON [ForeignTableName1] BEGIN DELETE FROM [TableName2] WHERE ColumnName2 = OLD.ForeignColumnName1;  END;"
             )
         );
     }

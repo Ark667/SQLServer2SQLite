@@ -8,10 +8,10 @@ using SqlServer2SqLite.Core.Services;
 namespace SqlServer2SqLite.Cli.Options;
 
 /// <summary>
-/// Defines the <see cref="ConvertOptions" />.
+/// Defines the <see cref="CopyOption" />.
 /// </summary>
-[Verb("convert", HelpText = "Convert source SQLServer database to SQLite.")]
-public class ConvertOptions
+[Verb("copy", HelpText = "Copy SQLServer data to target SQLite database.")]
+public class CopyOption
 {
     /// <summary>
     /// Gets or sets the SourceHost.
@@ -70,24 +70,24 @@ public class ConvertOptions
     /// The Convert.
     /// </summary>
     /// <returns>The <see cref="int"/>Zero if successful.</returns>
-    public int Convert()
+    public int Copy()
     {
         new SqlServerToSQLite(
             Program.ServiceProvider.GetRequiredService<ILogger<SqlServerToSQLite>>(),
             new SqlServerService(
-                Program.ServiceProvider.GetRequiredService<ILogger<SqlServerService>>()
+                Program.ServiceProvider.GetRequiredService<ILogger<SqlServerService>>(),
+                ConnectionStringHelper.GetSqlServerConnectionString(
+                    SourceHost,
+                    SourceDatabase,
+                    SourceUsername,
+                    SourcePassword
+                )
             ),
-            new SqLiteService(Program.ServiceProvider.GetRequiredService<ILogger<SqLiteService>>())
-        ).Convert(
-            ConnectionStringHelper.GetSqlServerConnectionString1(
-                SourceHost,
-                SourceDatabase,
-                SourceUsername,
-                SourcePassword
-            ),
-            TargetFile,
-            TargetPassword
-        );
+            new SqLiteService(
+                Program.ServiceProvider.GetRequiredService<ILogger<SqLiteService>>(),
+                ConnectionStringHelper.CreateSQLiteConnectionString(TargetFile, TargetPassword)
+            )
+        ).Copy();
 
         return 1;
     }
