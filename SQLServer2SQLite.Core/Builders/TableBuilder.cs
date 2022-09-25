@@ -118,8 +118,9 @@ namespace SqlServer2SqLite.Core.Builders
                     sb.Append("integer");
                 else
                 {
-                    sb.Append(col.ColumnType);
+                    sb.Append(col.SqLiteColumnType);
                 }
+
                 if (col.Length > 0)
                     sb.Append("(" + col.Length + ")");
             }
@@ -131,14 +132,9 @@ namespace SqlServer2SqLite.Core.Builders
 
             string defval = StripParens(col.DefaultValue);
             defval = DiscardNational(defval);
-            //_log.Debug("DEFAULT VALUE BEFORE [" + col.DefaultValue + "] AFTER [" + defval + "]");
+
             if (!string.IsNullOrEmpty(defval) && defval.ToUpper().Contains("GETDATE"))
             {
-                //_log.Debug(
-                //    "converted SQL Server GETDATE() to CURRENT_TIMESTAMP for column ["
-                //        + col.ColumnName
-                //        + "]"
-                //);
                 sb.Append(" DEFAULT (CURRENT_TIMESTAMP)");
             }
             else if (!string.IsNullOrEmpty(defval) && IsValidDefaultValue(defval))

@@ -39,7 +39,9 @@ namespace SQLServer2SQLite.Core.Builders
                 if (i < tableSchema.Columns.Count - 1)
                     sb.Append(", ");
 
-                SqliteType dbType = GetSqLiteDbTypeOfColumn(tableSchema.Columns[i]);
+                SqliteType dbType = ColumnSchema.GetSqLiteDbTypeOfColumn(
+                    tableSchema.Columns[i].ColumnType
+                );
                 SqliteParameter prm = new SqliteParameter(
                     pname,
                     dbType,
@@ -55,57 +57,6 @@ namespace SQLServer2SQLite.Core.Builders
             res.CommandText = sb.ToString();
             res.CommandType = CommandType.Text;
             return res;
-        }
-
-        // TODO test!
-        public static SqliteType GetSqLiteDbTypeOfColumn(ColumnSchema cs)
-        {
-            if (cs.ColumnType == "tinyint")
-                return SqliteType.Integer;
-            if (cs.ColumnType == "int")
-                return SqliteType.Integer;
-            if (cs.ColumnType == "smallint")
-                return SqliteType.Integer;
-            if (cs.ColumnType == "bigint")
-                return SqliteType.Integer;
-            if (cs.ColumnType == "bit")
-                return SqliteType.Integer;
-            if (
-                cs.ColumnType == "nvarchar"
-                || cs.ColumnType == "varchar"
-                || cs.ColumnType == "text"
-                || cs.ColumnType == "ntext"
-            )
-                return SqliteType.Text;
-            if (cs.ColumnType == "float")
-                return SqliteType.Real;
-            if (cs.ColumnType == "real")
-                return SqliteType.Real;
-            if (cs.ColumnType == "blob")
-                return SqliteType.Blob;
-            if (cs.ColumnType == "numeric")
-                return SqliteType.Real;
-            if (
-                cs.ColumnType == "timestamp"
-                || cs.ColumnType == "datetime"
-                || cs.ColumnType == "datetime2"
-                || cs.ColumnType == "date"
-                || cs.ColumnType == "time"
-                || cs.ColumnType == "datetimeoffset"
-            )
-                return SqliteType.Text;
-            if (cs.ColumnType == "nchar" || cs.ColumnType == "char")
-                return SqliteType.Text;
-            if (cs.ColumnType == "uniqueidentifier" || cs.ColumnType == "guid")
-                return SqliteType.Text;
-            if (cs.ColumnType == "xml")
-                return SqliteType.Text;
-            if (cs.ColumnType == "sql_variant")
-                return SqliteType.Text;
-            if (cs.ColumnType == "integer")
-                return SqliteType.Integer;
-
-            throw new InvalidOperationException("Illegal DB type found (" + cs.ColumnType + ")");
         }
     }
 }

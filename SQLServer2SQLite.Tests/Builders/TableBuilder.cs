@@ -26,7 +26,7 @@ public class TableBuilder
                 new ColumnSchema()
                 {
                     ColumnName = "ColumnName1",
-                    ColumnType = "ColumnType1",
+                    ColumnType = "int",
                     Length = 2,
                     IsNullable = true,
                     DefaultValue = "10",
@@ -36,7 +36,7 @@ public class TableBuilder
                 new ColumnSchema()
                 {
                     ColumnName = "ColumnName2",
-                    ColumnType = "ColumnType2",
+                    ColumnType = "varchar",
                     Length = 5,
                     IsNullable = false,
                     DefaultValue = null,
@@ -96,7 +96,7 @@ public class TableBuilder
         Assert.That(
             Core.Builders.TableBuilder.BuildCreateTableQuery(GetTableSchema()),
             Is.EqualTo(
-                "CREATE TABLE [TableName1] (\n\t[ColumnName1]\tinteger DEFAULT 10,\n\t[ColumnName2]\tColumnType2(5) NOT NULL COLLATE NOCASE,\n    PRIMARY KEY ([PrimaryKey1], [PrimaryKey2])\n,\n    FOREIGN KEY ([ColumnName2])\n        REFERENCES [ForeignTableName1]([ForeignColumnName1]),\n    FOREIGN KEY ([ColumnName3])\n        REFERENCES [ForeignTableName4]([ForeignColumnName4])\n);\nCREATE UNIQUE INDEX [TableName1_TableName2]\nON [TableName1]\n([ColumnName1], [ColumnName2] DESC);\nCREATE INDEX [TableName1_TableName3]\nON [TableName1]\n([ColumnName4]);\n"
+                "CREATE TABLE [TableName1] (\n\t[ColumnName1]\tinteger DEFAULT 10,\n\t[ColumnName2]\tTEXT(5) NOT NULL COLLATE NOCASE,\n    PRIMARY KEY ([PrimaryKey1], [PrimaryKey2])\n,\n    FOREIGN KEY ([ColumnName2])\n        REFERENCES [ForeignTableName1]([ForeignColumnName1]),\n    FOREIGN KEY ([ColumnName3])\n        REFERENCES [ForeignTableName4]([ForeignColumnName4])\n);\nCREATE UNIQUE INDEX [TableName1_TableName2]\nON [TableName1]\n([ColumnName1], [ColumnName2] DESC);\nCREATE INDEX [TableName1_TableName3]\nON [TableName1]\n([ColumnName4]);\n"
             )
         );
     }
@@ -104,17 +104,17 @@ public class TableBuilder
     [Test]
     public void BuildColumnStatement()
     {
-        var b = true;
+        var primaryKey = true;
 
         Assert.That(
             Core.Builders.TableBuilder.BuildColumnStatement(
                 GetColumnSchema(),
                 GetTableSchema(),
-                ref b
+                ref primaryKey
             ),
             Is.EqualTo("\t[ColumnName1]\tinteger DEFAULT 10")
         );
-        Assert.That(!b, Is.False);
+        Assert.That(!primaryKey, Is.False);
     }
 
     [Test]

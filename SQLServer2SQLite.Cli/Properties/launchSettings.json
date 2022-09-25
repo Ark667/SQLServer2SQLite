@@ -7,6 +7,14 @@
     "SQLServer2SQLite.Cli - Copy": {
       "commandName": "Project",
       "commandLineArgs": "copy --sourceHost p2zu24z7dc.database.windows.net --sourceDatabase db_deltadesk --sourceUsername Aingeru --sourcePassword Medrano.2015 --targetFile C:/Users/ainge/OneDrive/Escritorio/deltadesk.db"
+    },
+    "DeltaDesk - Create": {
+      "commandName": "Project",
+      "commandLineArgs": "create --sourceHost p2zu24z7dc.database.windows.net --sourceDatabase db_deltadesk --sourceUsername Aingeru --sourcePassword Medrano.2015 --targetFile K:\\GIT\\repos\\Ark667\\DeltaDesk\\DeltaDesk.App\\wwwroot\\data\\deltadesk.dev.db"
+    },
+    "DeltaDesk - Copy": {
+      "commandName": "Project",
+      "commandLineArgs": "copy --sourceHost p2zu24z7dc.database.windows.net --sourceDatabase db_deltadesk --sourceUsername Aingeru --sourcePassword Medrano.2015 --targetFile K:\\GIT\\repos\\Ark667\\DeltaDesk\\DeltaDesk.App\\wwwroot\\data\\deltadesk.dev.db"
     }
   }
 }
