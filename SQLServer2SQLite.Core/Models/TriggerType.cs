@@ -1,8 +1,7 @@
-﻿namespace SqlServer2SqLite.Core.Models
+﻿namespace SqlServer2SqLite.Core.Models;
+
+public enum TriggerType
 {
-    public enum TriggerType
-    {
-        After,
-        Before
-    }
+    After,
+    Before
 }

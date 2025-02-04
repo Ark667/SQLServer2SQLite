@@ -1,8 +1,7 @@
-namespace SqlServer2SqLite.Core.Models
+namespace SqlServer2SqLite.Core.Models;
+
+public class ViewSchema
 {
-    public class ViewSchema
-    {
-        public string ViewName { get; set; }
-        public string ViewSQL { get; set; }
-    }
+    public string ViewName { get; set; }
+    public string ViewSQL { get; set; }
 }

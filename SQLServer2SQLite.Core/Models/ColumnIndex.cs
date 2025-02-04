@@ -1,8 +1,7 @@
-﻿namespace SqlServer2SqLite.Core.Models
+﻿namespace SqlServer2SqLite.Core.Models;
+
+public class ColumnIndex
 {
-    public class ColumnIndex
-    {
-        public string ColumnName { get; set; }
-        public bool IsAscending { get; set; }
-    }
+    public string ColumnName { get; set; }
+    public bool IsAscending { get; set; }
 }

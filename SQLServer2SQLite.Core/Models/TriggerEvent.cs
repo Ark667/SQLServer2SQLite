@@ -1,9 +1,8 @@
-﻿namespace SqlServer2SqLite.Core.Models
+﻿namespace SqlServer2SqLite.Core.Models;
+
+public enum TriggerEvent
 {
-    public enum TriggerEvent
-    {
-        Delete,
-        Update,
-        Insert
-    }
+    Delete,
+    Update,
+    Insert
 }
